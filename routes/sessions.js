@@ -1,84 +1,85 @@
 const express = require('express');
-const router = express.Router();
 const Session = require('../models/Session');
 const auth = require('../middleware/auth');
+const { validationResult } = require('express-validator');
+const { saveDraftValidation, publishValidation } = require('../validations/sessionValidation');
 
-router.get('/sessions', async (req, res) => {
+const router = express.Router();
+
+router.get('/sessions', async (req, res, next) => {
   try {
-    const sessions = await Session.find({ status: 'published' });
+    const sessions = await Session.find({ status: 'published' }).sort({ created_at: -1 });
     res.json(sessions);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch public sessions.' });
+    next(err);
   }
 });
 
-router.get('/my-sessions', auth, async (req, res) => {
+router.get('/my-sessions', auth, async (req, res, next) => {
   try {
-    const sessions = await Session.find({ user_id: req.user.userId });
+    const sessions = await Session.find({ user_id: req.user.id }).sort({ updated_at: -1 });
     res.json(sessions);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch your sessions.' });
+    next(err);
   }
 });
 
-router.get('/my-sessions/:id', auth, async (req, res) => {
+router.get('/my-sessions/:id', auth, async (req, res, next) => {
   try {
-    const session = await Session.findOne({
-      _id: req.params.id,
-      user_id: req.user.userId,
-    });
-    if (!session) return res.status(404).json({ error: 'Session not found.' });
+    const session = await Session.findOne({ user_id: req.user.id, _id: req.params.id });
+    if (!session) return res.status(404).json({ message: 'Session not found' });
     res.json(session);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch session.' });
+    next(err);
   }
 });
 
-router.post('/my-sessions/save-draft', auth, async (req, res) => {
+
+router.post('/my-sessions/save-draft', auth, saveDraftValidation, async (req, res, next) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
     const { _id, title, tags, json_file_url } = req.body;
     let session;
     if (_id) {
-      
       session = await Session.findOneAndUpdate(
-        { _id, user_id: req.user.userId },
-        {
-          title,
-          tags,
-          json_file_url,
-          status: 'draft',
-          updated_at: new Date(),
-        },
+        { user_id: req.user.id, _id },
+        { title, tags: tags || [], json_file_url, status: 'draft', updated_at: Date.now() },
         { new: true }
       );
+      if (!session) return res.status(404).json({ message: 'Draft session not found' });
     } else {
-    
-      session = await Session.create({
-        user_id: req.user.userId,
-        title,
-        tags,
-        json_file_url,
-        status: 'draft',
-      });
+      session = new Session({ user_id: req.user.id, title, tags: tags || [], json_file_url, status: 'draft' });
+      await session.save();
     }
     res.json(session);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to save draft.' });
+    next(err);
   }
 });
 
-router.post('/my-sessions/publish', auth, async (req, res) => {
+router.post('/my-sessions/publish', auth, publishValidation, async (req, res, next) => {
   try {
-    const { _id } = req.body;
-    const session = await Session.findOneAndUpdate(
-      { _id, user_id: req.user.userId },
-      { status: 'published', updated_at: new Date() },
-      { new: true }
-    );
-    if (!session) return res.status(404).json({ error: 'Session not found.' });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const { _id, title, tags, json_file_url } = req.body;
+    let session;
+    if (_id) {
+      session = await Session.findOneAndUpdate(
+        { user_id: req.user.id, _id },
+        { title, tags: tags || [], json_file_url, status: 'published', updated_at: Date.now() },
+        { new: true }
+      );
+      if (!session) return res.status(404).json({ message: 'Session not found' });
+    } else {
+      session = new Session({ user_id: req.user.id, title, tags: tags || [], json_file_url, status: 'published' });
+      await session.save();
+    }
     res.json(session);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to publish session.' });
+    next(err);
   }
 });
 
