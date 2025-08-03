@@ -1,11 +1,11 @@
 const express = require('express');
-const auth = require('../middleware/auth'); // Middleware to authenticate user (JWT verification)
-const Session = require('../models/Session'); // Mongoose model for sessions
+const auth = require('../middleware/auth'); 
+const Session = require('../models/Session'); 
 const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
-// Validation chains
+
 const saveDraftValidation = [
   body('title').optional().isString().trim(),
   body('tags').optional().isArray(),
@@ -18,10 +18,6 @@ const publishValidation = [
   body('json_file_url').notEmpty().isString(),
 ];
 
-/**
- * GET /sessions
- * Public wellness sessions (published only)
- */
 router.get('/sessions', async (req, res, next) => {
   try {
     const sessions = await Session.find({ status: 'published' }).sort({ updated_at: -1 });
@@ -31,10 +27,7 @@ router.get('/sessions', async (req, res, next) => {
   }
 });
 
-/**
- * GET /my-sessions
- * Get current user's sessions (draft + published)
- */
+
 router.get('/my-sessions', auth, async (req, res, next) => {
   try {
     const sessions = await Session.find({ user_id: req.user.id }).sort({ updated_at: -1 });
@@ -44,10 +37,7 @@ router.get('/my-sessions', auth, async (req, res, next) => {
   }
 });
 
-/**
- * GET /my-sessions/:id
- * Get a single session by ID belonging to current user
- */
+
 router.get('/my-sessions/:id', auth, async (req, res, next) => {
   try {
     const session = await Session.findOne({ user_id: req.user.id, _id: req.params.id });
@@ -60,10 +50,7 @@ router.get('/my-sessions/:id', auth, async (req, res, next) => {
   }
 });
 
-/**
- * POST /my-sessions/save-draft
- * Save or update a draft session
- */
+
 router.post('/my-sessions/save-draft', auth, saveDraftValidation, async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -83,7 +70,7 @@ router.post('/my-sessions/save-draft', auth, saveDraftValidation, async (req, re
     };
 
     if (_id) {
-      // Update existing draft
+      
       session = await Session.findOneAndUpdate(
         { user_id: req.user.id, _id },
         sessionData,
@@ -91,7 +78,7 @@ router.post('/my-sessions/save-draft', auth, saveDraftValidation, async (req, re
       );
       if (!session) return res.status(404).json({ message: 'Draft session not found' });
     } else {
-      // Create new draft
+      
       session = new Session({
         ...sessionData,
         created_at: Date.now(),
@@ -105,10 +92,7 @@ router.post('/my-sessions/save-draft', auth, saveDraftValidation, async (req, re
   }
 });
 
-/**
- * POST /my-sessions/publish
- * Publish a session (create new or update existing)
- */
+
 router.post('/my-sessions/publish', auth, publishValidation, async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -128,7 +112,7 @@ router.post('/my-sessions/publish', auth, publishValidation, async (req, res, ne
     };
 
     if (_id) {
-      // Update existing session to published
+
       session = await Session.findOneAndUpdate(
         { user_id: req.user.id, _id },
         sessionData,
@@ -136,7 +120,7 @@ router.post('/my-sessions/publish', auth, publishValidation, async (req, res, ne
       );
       if (!session) return res.status(404).json({ message: 'Session not found' });
     } else {
-      // Create new published session
+      
       session = new Session({
         ...sessionData,
         created_at: Date.now(),

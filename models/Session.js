@@ -40,7 +40,7 @@ const SessionSchema = new mongoose.Schema({
   }
 });
 
-// Auto-update 'updated_at' on save
+
 SessionSchema.pre('save', function(next) {
   this.updated_at = Date.now();
   next();

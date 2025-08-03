@@ -1,5 +1,3 @@
-// routes/auth.js
-
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -8,7 +6,7 @@ const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
-// Validation rules
+
 const registerValidation = [
   body('email').isEmail().withMessage('Invalid email address'),
   body('password')
@@ -21,7 +19,7 @@ const loginValidation = [
   body('password').exists().withMessage('Password is required'),
 ];
 
-// POST /api/register
+
 router.post('/register', registerValidation, async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -45,7 +43,7 @@ router.post('/register', registerValidation, async (req, res, next) => {
   }
 });
 
-// POST /api/login
+
 router.post('/login', loginValidation, async (req, res, next) => {
   try {
     const errors = validationResult(req);
